@@ -88,7 +88,7 @@ console.log(href);
 Occasionally you may need to work with links directly.  The `links` method will return an array of link objects for a specified relation.
 
 ```js
-var links = hl.links(resource, 'find');
+var links = hal.links(resource, 'find');
 console.log(links.length);
 // -> 1
 ```
