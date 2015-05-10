@@ -1,20 +1,46 @@
 var UriTemplate = require('uritemplate');
 
-module.exports = {
-    resources: function(resource, relation) {
-        return getRelation(resource, '_embedded', relation);
-    },
+function expandUrlTemplate(template, vars) {
+    return UriTemplate.parse(template).expand(vars);
+}
+module.exports.expandUrlTemplate = expandUrlTemplate;
 
-    links: function(resource, relation) {
-        return getRelation(resource, '_links', relation);
-    },
+function resources(resource, relation) {
+    return getRelation(resource, '_embedded', relation);
+}
+module.exports.resources = resources;
 
-    hrefs: function(resource, relation, vars) {
-        return getRelation(resource, '_links', relation).map(function(link) {
-            return link.templated ? expandUriTemplate(link.href, vars) : link.href;
-        });
+function resource(resource, relation) {
+    return only(resources(resource, relation), 'resource');
+}
+module.exports.resource = resource;
+
+function links(resource, relation) {
+    return getRelation(resource, '_links', relation);
+}
+module.exports.links = links;
+
+function link(resource, relation) {
+    return only(links(resource, relation), 'link');
+}
+module.exports.link = link;
+
+function hrefs(resource, relation, vars) {
+    return links(resource, relation).map(expandLink.bind(null, vars));
+}
+module.exports.hrefs = hrefs;
+
+function href(resource, relation, vars) {
+    return only(hrefs(resource, relation, vars), 'href');
+}
+module.exports.href = href;
+
+function only(collection, name) {
+    if (collection.length !== 1) {
+        throw new Error('Expected exactly one ' + name + ', instead found ' + collection.length);
     }
-};
+    return collection[0];
+}
 
 function getRelation(resource, type, relation) {
     if (!resource[type]) {
@@ -27,16 +53,13 @@ function makeArray(value) {
     if (typeof value === 'undefined') {
         return [];
     }
-    if (isArray(value)) {
-        return value;
-    }
-    return [value];
+    return isArray(value) ? value : [value];
 }
 
 function isArray(value) {
     return Object.prototype.toString.call(value) === '[object Array]';
 }
 
-function expandUriTemplate(template, vars) {
-    return UriTemplate.parse(template).expand(vars);
+function expandLink(vars, link) {
+    return link.templated ? expandUrlTemplate(link.href, vars) : link.href;
 }
