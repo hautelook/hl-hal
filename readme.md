@@ -1,94 +1,101 @@
 # hl-hal
 
-A HAL resource is composed of properties, embedded resources, and links to other resources.  This library provides a consistent way to access embedded resources and links.
+A JavaScript library of functions for working with [Hypertext Application Language](http://stateless.co/hal_specification.html) (HAL) resources.  It contains functions for accessing information stored in a resource's links and embedded resources.
 
-The following examples will be based off this resource representing a list of orders:
+Using services which expose HAL resources is really awesome.  However, the JavaScript patterns for dealing with HAL data can be inelegant.
+
+To illustrate, imagine a HAL resource which provides information about friends on your friends list.  If you already have friends on your list, that response might look like:
 
 ```json
 {
     "_links": {
-        "self": { "href": "/orders" },
-        "next": { "href": "/orders?page=2" },
-        "find": { "href": "/orders{?id}", "templated": true }
+        "self": "http://example.com/friends"
     },
     "_embedded": {
-        "orders": [{
-            "_links": {
-                "self": { "href": "/orders/123" },
-                "basket": { "href": "/baskets/98712" }
-            },
-            "_embedded": {
-                "customer": {
-                    "_links": {
-                        "self": { "href": "/customers/7809" }
-                    },
-                    "name": "John Doe"
-                }
-            },
-            "total": 30.00,
-            "currency": "USD",
-            "status": "shipped",
-        },{
-            "_links": {
-                "self": { "href": "/orders/124" },
-                "basket": { "href": "/baskets/97213" }
-            },
-            "_embedded": {
-                "customer": {
-                    "_links": {
-                        "self": { "href": "/customers/12369" }
-                    },
-                    "name": "Jane Doe"
-                }
-            },
-            "total": 20.00,
-            "currency": "USD",
-            "status": "processing"
-        }]
-    },
-    "currentlyProcessing": 14,
-    "shippedToday": 20
+        "friends": [
+            { "name": "Monica" },
+            { "name": "Joey" }
+        ]
+    }
 }
 ```
 
-### Embedded Resources
-
-Embedded resources can be obtained using the `resources` function.  The function takes a HAL resource and the name of a relation.  For example, the embedded resources labeled `orders` can be obtained like:
+If we wanted to work with the list of friends, it would be very easy to do so.  We might write some code like:
 
 ```js
-var orders = hal.resources(resource, 'orders');
-console.log(orders.length);
-// -> 2
+var friends = resource._embedded.friends;
+console.log('You have ' + friends.length + ' friends');
+//=> You have 2 friends
 ```
 
-Note that the `resources` function always returns an array; even when the original data structure represents the relation as an object and not an array (like the `customer` resource embedded in the `orders` resources).
+But edge cases exist.  When you only have one friend, you might receive a resource which looks like this:
+
+```json
+{
+    "_links": {
+        "self": "http://example.com/friends"
+    },
+    "_embedded": {
+        "friends": { "name": "Monica" }
+    }
+}
+```
+
+Notice that in this case, the `friends` property contains an object instead of an array.  Further complicating matters, if your friends list were empty, the resource might not even include the `_embedded` property.  These edge cases force you to write a lot more guard code.  For example:
 
 ```js
-var orders = hal.resources(resource, 'orders');
-orders.forEach(function(order) {
-    var customers = hal.resources(resource, 'customer');
-    var customer = customers[0]; // resources always returns an array
-    console.log(customer.name);
-});
-// -> John Doe
-// -> Jane Doe
+var friends = [];
+if (resource._embedded && resource._embedded.friends) {
+    friends = resource._embedded.friends;
+    if (!Array.isArray(friends)) {
+        friends = [friends];
+    }
+}
+console.log('You have ' + friends.length + ' friends');
 ```
 
-### Links
-
-Links in HAL are an abstraction around urls.  This abstraction allows for urls to be templated.  As a consumer of HAL, you will usually just be interested in urls and not in links themselves.  The urls of links can be obtained using the `hrefs` function.  The `hrefs` function takes a HAL resource, the name of a relation and, optionally, a hash which will be used to expand url templates.  For example, if a client wished to find an order by id, it would use the `find` link like so:
+This library exposes pure functions which handle those edge cases for you so that you can write nice code like:
 
 ```js
-var hrefs = hal.hrefs(resource, 'find', { id: 31337 });
-var href = hrefs[0]; // hrefs always returns an array
-console.log(href);
-// -> /orders?id=31337
+var hal = require('hl-hal');
+
+var friends = hal.resources(resource, 'friends');
+console.log('You have ' + friends.length + ' friends');
 ```
 
-Occasionally you may need to work with links directly.  The `links` method will return an array of link objects for a specified relation.
+## API
+
+The API provides functions for getting embedded resources:
 
 ```js
-var links = hal.links(resource, 'find');
-console.log(links.length);
-// -> 1
+function resource(resource, relation)
+function resources(resource, relation)
 ```
+
+It also provides functions for getting urls out of links:
+
+```js
+function href(resource, relation, templateVars)
+function hrefs(resource, relation, templateVars)
+```
+
+And it exposes a function for expanding RFC6570 URL templates:
+
+```js
+function expandUrlTemplate(template, vars)
+```
+
+And if you ever need to work directly with links (as opposed to the urls inside of them), these functions are available:
+
+```js
+function link(resource, relation)
+function links(resource, relation)
+```
+
+## Usage
+
+The best way to understand how the functions work is to take a quick look at the [test suite](./index.spec.js).
+
+## Acknowledgements
+
+This library makes use of the [`uritemplate-js`](https://github.com/fxa/uritemplate-js) library by Franz Antesberger.
