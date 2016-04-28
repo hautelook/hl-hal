@@ -16,7 +16,7 @@
   },
   "homepage": "https://github.com/hautelook/hl-hal",
   "devDependencies": {
-    "istanbul": "0.3.13",
+    "istanbul": "0.4.3",
     "jasmine-node": "1.14.5"
   },
   "dependencies": {
