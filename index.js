@@ -1,5 +1,7 @@
 var UriTemplate = require('uritemplate');
 
+module.exports.halProps = ['_links', '_embedded'];
+
 function expandUrlTemplate(template, vars) {
     return UriTemplate.parse(template).expand(vars);
 }
